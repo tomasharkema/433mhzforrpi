@@ -37,9 +37,29 @@ unsigned long RemoteSwitch::encodeTelegram(unsigned short trits[]) {
 	
 	return data;
 }
-		
+
+
 void RemoteSwitch::sendTelegram(unsigned short trits[]) {
 	sendTelegram(encodeTelegram(trits),_pin);	
+}
+
+/****************************************************/
+/* Addition 07-02-2015 by W. Pietersz (tweakers.net mouse86)
+ * Quick fix for the new RPI 2... microseconds function does not work correct
+ * for values higher than 100. As stated in the manual, values lower than 100
+ * are hardcoded delays into the wiring lib. So these extra functions below
+ * makes uses of that by limiting the delay calls to microSeconds to less than 100
+ * Btw. I measured 19.90mS delay for 190 microsecond requests. Just in case anyone
+ * wonders. Please forgive me for the odd funcion style, I use C not C++ :-D */		
+void delayMicroseconds_WP(unsigned int uSdelay)
+{
+  while(uSdelay > 99)
+  {
+    uSdelay -= 100;
+    delayMicroseconds(99);
+  }
+  
+  delayMicroseconds(uSdelay);
 }
 
 /**
@@ -50,7 +70,7 @@ void RemoteSwitch::sendTelegram(unsigned short trits[]) {
 * d = data
 */
 void RemoteSwitch::sendTelegram(unsigned long data, unsigned short pin) {
-	unsigned int periodusec = (unsigned long)data >> 23;
+	unsigned int periodusec = (unsigned long)data >> 23; 
 	unsigned short repeats = 5 << (((unsigned long)data >> 20) & 7); // 7 = B111
 	data = data & 0xfffff; //truncate to 20 bit
 		
@@ -62,8 +82,18 @@ void RemoteSwitch::sendTelegram(unsigned long data, unsigned short pin) {
 		dataBase4|=(data%3);
 		data/=3;
 	}
-	
+     
 	for (unsigned short int j=0;j<repeats;j++) {		
+ 
+ 
+ /* // this part is to test the delay routine
+ 		digitalWrite(pin, HIGH);
+		delayMicroseconds_WP(periodusec);
+		digitalWrite(pin, LOW);
+		delayMicroseconds_WP(periodusec);
+   
+   continue;
+ */
 		//Sent one telegram		
 		
 		//Use data-var as working var
@@ -73,44 +103,44 @@ void RemoteSwitch::sendTelegram(unsigned long data, unsigned short pin) {
 			switch (data & 3) { // 3 = B11
 				case 0:
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					break;
 				case 1:
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					break;
 				case 2: //AKA: X or float
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					digitalWrite(pin, HIGH);
-					delayMicroseconds(periodusec*3);
+					delayMicroseconds_WP(periodusec*3);
 					digitalWrite(pin, LOW);
-					delayMicroseconds(periodusec);
+					delayMicroseconds_WP(periodusec);
 					break;
 			}
 			//Next trit
 			data>>=2;
 		}
-		
+		 
 		//Send termination/synchronisation-signal. Total length: 32 periods
 		digitalWrite(pin, HIGH);
-		delayMicroseconds(periodusec);
+		delayMicroseconds_WP(periodusec);
 		digitalWrite(pin, LOW);
-		delayMicroseconds(periodusec*31);
+		delayMicroseconds_WP(periodusec*31);    
 	}
 }
 
